@@ -20,7 +20,7 @@ from shortGPT.gpt import gpt_editing, gpt_translate, gpt_yt
 class ContentShortEngine(AbstractContentEngine):
 
     def __init__(self, short_type: str, background_video_name: str, background_music_name: str, voiceModule: VoiceModule, short_id="",
-                 num_images=None, watermark=None, language: Language = Language.ENGLISH,):
+                 num_images=None, watermark=None, language: Language = Language.ENGLISH, custom_script="No custom script provided."):
         super().__init__(short_id, short_type, language, voiceModule)
         if not short_id:
             if (num_images):
