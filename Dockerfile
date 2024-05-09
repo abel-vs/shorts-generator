@@ -20,6 +20,15 @@ WORKDIR /app
 # Copy requirements file
 COPY requirements.txt .
 
+# Install Rust using rustup
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+
+# Add Cargo and Rust to PATH
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Confirm installation
+RUN rustc --version && cargo --version
+
 # Install dependencies
 RUN pip install -r requirements.txt
 
