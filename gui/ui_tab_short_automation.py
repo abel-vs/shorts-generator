@@ -18,7 +18,7 @@ from shortGPT.config.languages import (EDGE_TTS_VOICENAME_MAPPING,
 from shortGPT.engine.facts_short_engine import FactsShortEngine
 from shortGPT.engine.reddit_short_engine import RedditShortEngine
 from shortGPT.engine.custom_script_engine import CustomScriptShortEngine
-
+from shortGPT.gpt import script_gpt
 
 class ShortAutomationUI(AbstractComponentUI):
     def __init__(self, shortGptUI: gr.Blocks):
@@ -26,6 +26,10 @@ class ShortAutomationUI(AbstractComponentUI):
         self.embedHTML = '<div style="display: flex; overflow-x: auto; gap: 20px;">'
         self.progress_counter = 0
         self.short_automation = None
+
+    def generate_script_from_description(self, description):
+        generated_script = script_gpt.generateScript(description)
+        return generated_script
 
     def create_ui(self):
         with gr.Row(visible=False) as short_automation:
@@ -36,6 +40,24 @@ class ShortAutomationUI(AbstractComponentUI):
                 facts_subject = gr.Textbox(label="Write a subject for your facts (example: Football facts)", interactive=True, visible=False)
                 short_type.change(lambda x: gr.update(visible=x == "Custom Facts shorts"), [short_type], [facts_subject])
                 short_type.change(lambda x: gr.update(visible=x == "Custom Script"), [short_type], [custom_script])
+
+                with gr.Column(visible=True) as script_generator:
+                    # Add a textbox for custom script description
+                    script_description = gr.Textbox(label="Enter your custom script description", placeholder="Type here...", interactive=True)
+                    
+                    # Add a button to generate script
+                    generate_script_button = gr.Button("Generate Script")
+                    
+                    # Output area for the generated script
+                    generated_script_output = gr.Textbox(label="Generated Script", interactive=False, visible=True)
+                    
+                    # Button click event
+                    generate_script_button.click(
+                        self.generate_script_from_description,
+                        inputs=[script_description],
+                        outputs=[generated_script_output]
+                    )
+
                 tts_engine = gr.Radio([AssetComponentsUtils.ELEVEN_TTS, AssetComponentsUtils.EDGE_TTS, AssetComponentsUtils.COQUI_TTS], label="Text to speech engine", value=AssetComponentsUtils.ELEVEN_TTS, interactive=True)
                 self.tts_engine = tts_engine.value
                 with gr.Column(visible=True) as eleven_tts:
