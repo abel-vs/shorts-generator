@@ -19,9 +19,12 @@ from shortGPT.gpt import gpt_editing, gpt_translate, gpt_yt
 
 class ContentShortEngine(AbstractContentEngine):
 
-    def __init__(self, short_type: str, background_video_name: str, background_music_name: str, voiceModule: VoiceModule, short_id="",
+    def __init__(self, short_type: str,  background_video_name: str, background_music_name: str, voiceModule: VoiceModule, short_id="", script=None,
                  num_images=None, watermark=None, language: Language = Language.ENGLISH, custom_script="No custom script provided."):
         super().__init__(short_id, short_type, language, voiceModule)
+
+        self.script = script
+
         if not short_id:
             if (num_images):
                 self._db_num_images = num_images
@@ -30,20 +33,27 @@ class ContentShortEngine(AbstractContentEngine):
             self._db_background_video_name = background_video_name
             self._db_background_music_name = background_music_name
 
-        self.stepDict = {
-            1:  self._generateScript,
-            2:  self._generateTempAudio,
-            3:  self._speedUpAudio,
-            4:  self._timeCaptions,
-            5:  self._generateImageSearchTerms,
-            6:  self._generateImageUrls,
-            7:  self._chooseBackgroundMusic,
-            8:  self._chooseBackgroundVideo,
-            9:  self._prepareBackgroundAssets,
+        # Initialize stepDict conditionally based on whether a script is provided
+        self.stepDict = {}
+        if not self.script:  # Only add _generateScript if no script is provided
+            self.stepDict[1] = self._generateScript
+        else:
+            self.stepDict[1] = lambda: setattr(self, '_db_script', self.script)  
+            
+        self.stepDict.update({
+            2: self._generateTempAudio,
+            3: self._speedUpAudio,
+            4: self._timeCaptions,
+            5: self._generateImageSearchTerms,
+            6: self._generateImageUrls,
+            7: self._chooseBackgroundMusic,
+            8: self._chooseBackgroundVideo,
+            9: self._prepareBackgroundAssets,
             10: self._prepareCustomAssets,
             11: self._editAndRenderShort,
             12: self._addYoutubeMetadata
-        }
+        })
+
 
     @abstractmethod
     def _generateScript(self):

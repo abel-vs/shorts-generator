@@ -1,5 +1,6 @@
 from shortGPT.gpt import gpt_utils
 import json
+
 def generateScript(script_description):
     chat, system = gpt_utils.load_local_yaml_prompt('prompt_templates/script_generator.yaml')
     chat = chat.replace("<<SCRIPT_DESCRIPTION>>", script_description)

@@ -18,7 +18,8 @@ from shortGPT.config.languages import (EDGE_TTS_VOICENAME_MAPPING,
 from shortGPT.engine.facts_short_engine import FactsShortEngine
 from shortGPT.engine.reddit_short_engine import RedditShortEngine
 from shortGPT.engine.custom_script_engine import CustomScriptShortEngine
-from shortGPT.gpt import script_gpt
+from shortGPT.engine.sat_engine import SATEngine
+from shortGPT.gpt import script_gpt, facts_gpt, reddit_gpt, sat_gpt
 
 class ShortAutomationUI(AbstractComponentUI):
     def __init__(self, shortGptUI: gr.Blocks):
@@ -27,34 +28,41 @@ class ShortAutomationUI(AbstractComponentUI):
         self.progress_counter = 0
         self.short_automation = None
 
-    def generate_script_from_description(self, description):
-        generated_script = script_gpt.generateScript(description)
+    def generate_script_preview(self, short_type, facts_subject, custom_script):
+        if short_type == "Reddit Story shorts":
+            question = reddit_gpt.getInterestingRedditQuestion()
+            generated_script = reddit_gpt.createRedditScript(question)
+        elif short_type == "Custom Facts shorts":
+            generated_script = facts_gpt.generateFacts(facts_subject)
+        elif short_type == "Custom Script":
+            generated_script = script_gpt.generateScript(custom_script)  # Assuming custom script is directly editable
+        elif short_type == "SAT Question":
+            generated_script = sat_gpt.generateSATquestion()
+        else:
+            generated_script = "Unsupported script type"
         return generated_script
 
     def create_ui(self):
         with gr.Row(visible=False) as short_automation:
             with gr.Column():
                 numShorts = gr.Number(label="Number of shorts", minimum=1, value=1)
-                short_type = gr.Radio(["Reddit Story shorts", "Historical Facts shorts", "Scientific Facts shorts", "Custom Facts shorts", "Custom Script"], label="Type of shorts generated", value="Scientific Facts shorts", interactive=True)
+                short_type = gr.Radio(["Reddit Story shorts", "Custom Facts shorts", "Custom Script", "SAT Question"], label="Type of shorts generated", value="SAT Question", interactive=True)
                 custom_script = gr.Textbox(label="Write out your own script", interactive=True, visible=False)
                 facts_subject = gr.Textbox(label="Write a subject for your facts (example: Football facts)", interactive=True, visible=False)
                 short_type.change(lambda x: gr.update(visible=x == "Custom Facts shorts"), [short_type], [facts_subject])
                 short_type.change(lambda x: gr.update(visible=x == "Custom Script"), [short_type], [custom_script])
 
                 with gr.Column(visible=True) as script_generator:
-                    # Add a textbox for custom script description
-                    script_description = gr.Textbox(label="Enter your custom script description", placeholder="Type here...", interactive=True)
-                    
+                    # Output area for the generated script
+                    generated_script_output = gr.Textbox(label="Script Preview", interactive=True, visible=True)
+
                     # Add a button to generate script
                     generate_script_button = gr.Button("Generate Script")
                     
-                    # Output area for the generated script
-                    generated_script_output = gr.Textbox(label="Generated Script", interactive=False, visible=True)
-                    
                     # Button click event
                     generate_script_button.click(
-                        self.generate_script_from_description,
-                        inputs=[script_description],
+                        self.generate_script_preview,
+                        inputs=[short_type, facts_subject, custom_script],
                         outputs=[generated_script_output]
                     )
 
@@ -94,6 +102,7 @@ class ShortAutomationUI(AbstractComponentUI):
             video_folder.click(lambda _: AssetComponentsUtils.start_file(os.path.abspath("videos/")))
 
             createButton.click(self.inspect_create_inputs, inputs=[AssetComponentsUtils.background_video_checkbox(), AssetComponentsUtils.background_music_checkbox(), watermark, short_type, facts_subject, custom_script], outputs=[generation_error]).success(self.create_short, inputs=[
+                generated_script_output,
                 numShorts,
                 short_type,
                 tts_engine,
@@ -112,7 +121,7 @@ class ShortAutomationUI(AbstractComponentUI):
         self.short_automation = short_automation
         return self.short_automation
 
-    def create_short(self, numShorts, short_type, tts_engine, language_eleven, language_edge, language_coqui, numImages, watermark, background_video_list, background_music_list, facts_subject, custom_script, voice_eleven, voice_coqui, progress=gr.Progress()):
+    def create_short(self, generated_script_output, numShorts, short_type, tts_engine, language_eleven, language_edge, language_coqui, numImages, watermark, background_video_list, background_music_list, facts_subject, custom_script, voice_eleven, voice_coqui, progress=gr.Progress()):
         '''Creates a short'''
         try:
             numShorts = int(numShorts)
@@ -129,7 +138,7 @@ class ShortAutomationUI(AbstractComponentUI):
                 language = Language(language_coqui.lower().capitalize())
                 voice_module = CoquiVoiceModule(voice_coqui, LANGUAGE_ACRONYM_MAPPING[language])
             for i in range(numShorts):
-                shortEngine = self.create_short_engine(short_type=short_type, voice_module=voice_module, language=language, numImages=numImages, watermark=watermark,
+                shortEngine = self.create_short_engine(script=generated_script_output, short_type=short_type, voice_module=voice_module, language=language, numImages=numImages, watermark=watermark,
                                                        background_video=background_videos[i], background_music=background_musics[i], facts_subject=facts_subject, custom_script=custom_script)
                 num_steps = shortEngine.get_total_steps()
 
@@ -192,16 +201,18 @@ class ShortAutomationUI(AbstractComponentUI):
             raise gr.Error("ELEVEN LABS API key is missing. Please go to the config tab and enter the API key.")
         return gr.update(visible=False)
 
-    def create_short_engine(self, short_type, voice_module, language, numImages, watermark, background_video, background_music, facts_subject, custom_script):
+    def create_short_engine(self, script, short_type, voice_module, language, numImages, watermark, background_video, background_music, facts_subject, custom_script):
         if short_type == "Reddit Story shorts":
-            return RedditShortEngine(voice_module, background_video_name=background_video, background_music_name=background_music, num_images=numImages, watermark=watermark, language=language)
+            return RedditShortEngine(voice_module, script=script, background_video_name=background_video, background_music_name=background_music, num_images=numImages, watermark=watermark, language=language)
         if "fact" in short_type.lower():
             if "custom" in short_type.lower():
                 facts_subject = facts_subject
             else:
                 facts_subject = short_type
-            return FactsShortEngine(voice_module, facts_type=facts_subject, background_video_name=background_video, background_music_name=background_music, num_images=50, watermark=watermark, language=language)
+            return FactsShortEngine(voice_module, script=script, facts_type=facts_subject, background_video_name=background_video, background_music_name=background_music, num_images=50, watermark=watermark, language=language)
         if short_type == "Custom Script":
             print("Creating short with Custom Script")
-            return CustomScriptShortEngine(voice_module, custom_script=custom_script, background_video_name=background_video, background_music_name=background_music, num_images=50, watermark=watermark, language=language)
+            return CustomScriptShortEngine(voice_module, script=script, background_video_name=background_video, background_music_name=background_music, num_images=50, watermark=watermark, language=language)
+        if short_type == "SAT Question":
+            return SATEngine(voice_module, script=script, background_video_name=background_video, background_music_name=background_music, num_images=50, watermark=watermark, language=language)
         raise gr.Error(f"Short type does not have a valid short engine: {short_type}")

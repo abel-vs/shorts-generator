@@ -9,9 +9,9 @@ import os
 
 class RedditShortEngine(ContentShortEngine):
     # Mapping of variable names to database paths
-    def __init__(self,voiceModule: VoiceModule, background_video_name: str, background_music_name: str,short_id="",
+    def __init__(self,voiceModule: VoiceModule, background_video_name: str, background_music_name: str,short_id="", script=None,
                  num_images=None, watermark=None, language:Language = Language.ENGLISH):
-        super().__init__(short_id=short_id, short_type="reddit_shorts", background_video_name=background_video_name, background_music_name=background_music_name,
+        super().__init__(script=script, short_id=short_id, short_type="reddit_shorts", background_video_name=background_video_name, background_music_name=background_music_name,
                  num_images=num_images, watermark=watermark, language=language, voiceModule=voiceModule)
     
     def __generateRandomStory(self):

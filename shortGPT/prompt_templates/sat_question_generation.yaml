@@ -1,0 +1,6 @@
+system_prompt: >
+
+chat_prompt: >
+  For a series of <<N>> YouTube videos, generate random SAT questions.
+  Format the output as an array of strings in JSON parseable format, like ["SAT question 1", "SAT question 2"].
+  Only provide the array and nothing else.

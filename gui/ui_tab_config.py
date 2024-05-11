@@ -7,11 +7,24 @@ from gui.ui_abstract_component import AbstractComponentUI
 from shortGPT.api_utils.eleven_api import ElevenLabsAPI
 from shortGPT.config.api_db import ApiKeyManager
 
+import os
 
 class ConfigUI(AbstractComponentUI):
     def __init__(self):
         self.api_key_manager = ApiKeyManager()
-        eleven_key = self.api_key_manager.get_api_key('ELEVEN LABS')
+        # Initialize and save all keys based on environment variables
+        openai_key = os.getenv('OPENAI_API_KEY')
+        eleven_key = os.getenv('ELEVEN_LABS_API_KEY')
+        pexels_key = os.getenv('PEXELS_API_KEY')
+
+        print(f"OPENAI: {openai_key}")
+        print(f"ELEVEN_LABS: {eleven_key}")
+        print(f"PEXELS: {pexels_key}")
+        
+        self.api_key_manager.set_api_key('OPENAI', openai_key)
+        self.api_key_manager.set_api_key('ELEVEN LABS', eleven_key)
+        self.api_key_manager.set_api_key('PEXELS', pexels_key)
+        
         self.eleven_labs_api = ElevenLabsAPI(eleven_key) if eleven_key else None
 
     def on_show(self, button_text, textbox, button):
